@@ -1,0 +1,12 @@
+# Isolated Fleetbase v0.7.75 API staging build source for Render.
+# Do not merge this branch or alter the current Cloudflare/Render production services.
+# Image built from official Fleetbase v0.7.75 release, with checked MySQL migration definitions.
+# See shabdinus-micllp/fleetmgmt branch stable/v0.7.75-rc1 for canonical build workflow.
+FROM ghcr.io/shabdinus-micllp/fleetbase-api-clean@sha256:53b950f61b4872f31a16bbd5b8c0519a234cd959fd4f0ada448c13c0df25564a
+
+WORKDIR /fleetbase/api
+ENV PORT=10000
+EXPOSE 10000
+
+# Inherit staging image ENTRYPOINT/CMD; run PHP HTTP server only.
+# No database migrations or seeding on startup.
