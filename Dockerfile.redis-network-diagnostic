@@ -1,7 +1,6 @@
-# Isolated feasibility test: can the pinned Fleetbase image contain a local Redis binary?
-# This Dockerfile is ONLY deployed to fleetbase-v075-redis-netdiag, never API.
-FROM redis:7.4-bookworm AS redis-bin
-FROM ghcr.io/shabdinus-micllp/fleetbase-api-clean@sha256:53b950f61b4872f31a16bbd5b8c0519a234cd959fd4f0ada448c13c0df25564a
-COPY --from=redis-bin /usr/local/bin/redis-server /tmp/redis-server
+FROM php:8.2-cli-alpine
+WORKDIR /opt/diagnostic
+COPY tools/redis-connectivity.php /opt/diagnostic/redis-connectivity.php
+RUN mkdir -p /opt/diagnostic/public && printf 'diagnostic service active\n' > /opt/diagnostic/public/index.html
 EXPOSE 10000
-CMD ["sh", "-c", "echo '[local-redis-test] checking redis binary'; /tmp/redis-server --version || true; echo '[local-redis-test] starting isolated HTTP'; exec php -S 0.0.0.0:10000 -t /fleetbase/api/public"]
+CMD ["sh", "-c", "php /opt/diagnostic/redis-connectivity.php; exec php -S 0.0.0.0:${PORT:-10000} -t /opt/diagnostic/public"]
