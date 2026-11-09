@@ -88,7 +88,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        Event::listen(\\Illuminate\\Foundation\\Http\\Events\\RequestHandled::class, function ($event) use ($started, &$count, &$totalMs) {
+        Event::listen(\Illuminate\Foundation\Http\Events\RequestHandled::class, function ($event) use ($started, &$count, &$totalMs) {
             Log::info('[registration:timing:finish]', [
                 'status' => $event->response->getStatusCode(),
                 'elapsed_ms' => round((microtime(true) - $started) * 1000, 2),
