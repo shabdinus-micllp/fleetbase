@@ -1,3 +1,5 @@
 {
-    "API_HOST": "http://localhost:8000"
+    "API_HOST": "https://fleetbase-api-v075-stage.onrender.com",
+    "API_SECURE": true,
+    "API_NAMESPACE": "int/v1"
 }
