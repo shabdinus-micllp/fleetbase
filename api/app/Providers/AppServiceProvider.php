@@ -46,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
+        $this->configureRegistrationTimingDiagnostics();
     }
 
     /**
@@ -64,6 +65,55 @@ class AppServiceProvider extends ServiceProvider
      * This logs the divergence at the statement that caused it, which is the
      * only place the culprit is still identifiable.
      */
+    /**
+     * Opt-in timing for the staging onboarding endpoint.
+     *
+     * Records completed database operations without SQL, bindings, request
+     * fields, emails, credentials, or tokens. A fatal timeout may prevent
+     * the request-completed event; completed-query breadcrumbs remain.
+     */
+    protected function configureRegistrationTimingDiagnostics(): void
+    {
+        if (!env('REGISTRATION_TIMING_DIAGNOSTIC_ENABLED', false)) {
+            return;
+        }
+
+        $request = request();
+        if (!$request->is('int/v1/onboard/create-account')) {
+            return;
+        }
+
+        $started = microtime(true);
+        $count = 0;
+        $totalMs = 0.0;
+
+        Log::info('[registration:timing:start]', [
+            'method' => $request->method(),
+            'path' => $request->path(),
+        ]);
+
+        Event::listen(QueryExecuted::class, function (QueryExecuted $query) use (&$count, &$totalMs) {
+            ++$count;
+            $totalMs += $query->time;
+
+            Log::info('[registration:timing:query]', [
+                'sequence' => $count,
+                'connection' => $query->connectionName,
+                'duration_ms' => round($query->time, 2),
+                'elapsed_ms' => round((microtime(true) - LARAVEL_START) * 1000, 2),
+            ]);
+        });
+
+        Event::listen(\\Illuminate\\Foundation\\Http\\Events\\RequestHandled::class, function ($event) use ($started, &$count, &$totalMs) {
+            Log::info('[registration:timing:finish]', [
+                'status' => $event->response->getStatusCode(),
+                'elapsed_ms' => round((microtime(true) - $started) * 1000, 2),
+                'completed_queries' => $count,
+                'completed_query_ms' => round($totalMs, 2),
+            ]);
+        });
+    }
+
     protected function configureTransactionTripwire(): void
     {
         if (!env('DB_TXN_TRIPWIRE_ENABLED', false)) {
