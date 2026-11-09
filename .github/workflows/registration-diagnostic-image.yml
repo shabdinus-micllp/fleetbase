@@ -1,0 +1,58 @@
+name: Fleetbase v0.7.75 registration diagnostic image
+
+on:
+  push:
+    branches:
+      - diagnostics/v075-registration-timing
+    paths:
+      - api/app/Providers/AppServiceProvider.php
+      - Dockerfile.registration-diagnostic
+      - .github/workflows/registration-diagnostic-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build isolated diagnostic image
+        run: |
+          docker build --pull=false \
+            -f Dockerfile.registration-diagnostic \
+            -t fleetbase-v075-registration-diagnostic:check .
+
+      - name: Validate PHP syntax in the actual image
+        run: |
+          docker run --rm --entrypoint php fleetbase-v075-registration-diagnostic:check \
+            -l /fleetbase/api/app/Providers/AppServiceProvider.php
+
+      - name: Verify diagnostic source is in the image
+        run: |
+          docker run --rm --entrypoint sh fleetbase-v075-registration-diagnostic:check \
+            -c 'grep -q "REGISTRATION_TIMING_DIAGNOSTIC_ENABLED" /fleetbase/api/app/Providers/AppServiceProvider.php && grep -q "registration:timing:query" /fleetbase/api/app/Providers/AppServiceProvider.php'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish diagnostic image (not deployed)
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          image="ghcr.io/shabdinus-micllp/fleetbase-registration-diagnostic"
+          docker tag fleetbase-v075-registration-diagnostic:check "$image:sha-$SHA"
+          docker push "$image:sha-$SHA"
+          echo "Published $image:sha-$SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Render staging has not been modified." >> "$GITHUB_STEP_SUMMARY"
