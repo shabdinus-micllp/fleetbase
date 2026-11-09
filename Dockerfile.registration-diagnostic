@@ -1,3 +1,4 @@
-# Prebuilt and syntax-verified diagnostic image. No COPY/RUN layers on Render rootless builder.
-# Built by GitHub Actions run 42644318872 from commit 6938efb942814e6427b2695e565b05f3f7041065.
-FROM ghcr.io/shabdinus-micllp/fleetbase-registration-diagnostic@sha256:217b47385951ac045801baaa22e3bbea1ffd3fa587a04e9d1cf32a6722a3f9a0
+# Prebuilt, syntax-verified Fleetbase v0.7.75 registration diagnostic image.
+# Published by successful GitHub Actions build for commit 70591e391fcc77f75b5732668f4b35a64d2bd927.
+# No COPY/RUN layers on Render rootless builder. Diagnostic service only.
+FROM ghcr.io/shabdinus-micllp/fleetbase-registration-diagnostic@sha256:2aa89707d55ca0c7bd54bfdd0e378482d48b8a7699670fb52418f704f4a9308b
