@@ -44,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        $this->registerReadOnlyDatabaseDiagnostic();
         $this->configureOutboundHttpLogging();
         $this->configureTransactionTripwire();
     }
@@ -159,6 +160,43 @@ class AppServiceProvider extends ServiceProvider
             ->map(fn ($frame) => ($frame['file'] ?? '?') . ':' . ($frame['line'] ?? '?'))
             ->values()
             ->all();
+    }
+
+    /**
+     * Temporary diagnostic. Disabled unless explicitly enabled and protected by
+     * a dedicated high-entropy bearer token. Never returns credentials or rows.
+     */
+    protected function registerReadOnlyDatabaseDiagnostic(): void
+    {
+        if (!filter_var(env('DB_DIAG_ENABLED', false), FILTER_VALIDATE_BOOLEAN)) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Route::get('/__diagnostics/db-readonly', function (\Illuminate\Http\Request $request) {
+            $expected = (string) env('DB_DIAG_TOKEN', '');
+            $provided = (string) $request->bearerToken();
+            if (strlen($expected) < 32 || !$provided || !hash_equals($expected, $provided)) {
+                abort(404);
+            }
+
+            try {
+                $db = \Illuminate\Support\Facades\DB::connection();
+                $db->select('SELECT 1 AS ok');
+                $schema = $db->getSchemaBuilder();
+                return response()->json([
+                    'connected' => true,
+                    'users_table' => $schema->hasTable('users'),
+                    'companies_table' => $schema->hasTable('companies'),
+                ])->header('Cache-Control', 'no-store');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('DB diagnostic failed', [
+                    'exception_class' => get_class($e),
+                    'error_code' => (string) $e->getCode(),
+                ]);
+                return response()->json(['connected' => false], 503)
+                    ->header('Cache-Control', 'no-store');
+            }
+        });
     }
 
     protected function configureOutboundHttpLogging(): void
