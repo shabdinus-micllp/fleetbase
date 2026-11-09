@@ -1,3 +1,3 @@
-# Isolated Fleetbase v0.7.75 diagnostic overlay; never used by Render staging directly.
-FROM ghcr.io/shabdinus-micllp/fleetbase-api-clean@sha256:53b950f61b4872f31a16bbd5b8c0519a234cd959fd4f0ada448c13c0df25564a
-COPY api/app/Providers/AppServiceProvider.php /fleetbase/api/app/Providers/AppServiceProvider.php
+# Prebuilt and syntax-verified diagnostic image. No COPY/RUN layers on Render rootless builder.
+# Built by GitHub Actions run 42644318872 from commit 6938efb942814e6427b2695e565b05f3f7041065.
+FROM ghcr.io/shabdinus-micllp/fleetbase-registration-diagnostic@sha256:217b47385951ac045801baaa22e3bbea1ffd3fa587a04e9d1cf32a6722a3f9a0
