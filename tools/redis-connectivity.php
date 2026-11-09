@@ -7,6 +7,14 @@ $start = microtime(true);
 echo "[redis-diagnostic] starting\n";
 $resolved = gethostbyname($host);
 echo "[redis-diagnostic] system resolver: " . ($resolved === $host ? "unresolved" : "resolved") . "\n";
+if (filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+    echo "[redis-diagnostic] resolved IPv4: {$resolved}\n";
+    echo "[redis-diagnostic] IPv4 private: " . (filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) ? "no" : "yes") . "\n";
+    $ipErrNo = 0; $ipErrStr = "";
+    $ipSocket = @stream_socket_client("tcp://{$resolved}:{$port}", $ipErrNo, $ipErrStr, 4, STREAM_CLIENT_CONNECT);
+    echo "[redis-diagnostic] direct IPv4 TCP: " . ($ipSocket ? "CONNECTED" : "FAILED code={$ipErrNo} reason=" . preg_replace("/[^a-zA-Z0-9 .:_-]/", "", $ipErrStr)) . "\n";
+    if ($ipSocket) fclose($ipSocket);
+}
 $records = @dns_get_record($host, DNS_A | DNS_AAAA);
 if (!is_array($records) || !$records) {
     echo "[redis-diagnostic] DNS: no A/AAAA records\n";
