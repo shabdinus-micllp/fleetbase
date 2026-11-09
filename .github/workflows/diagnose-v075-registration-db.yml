@@ -1,0 +1,33 @@
+name: Diagnose v0.7.75 staging registration database
+
+on:
+  push:
+    branches:
+      - deploy/v0.7.75-render-staging
+    paths:
+      - ops/diagnose_staging_registration.py
+      - .github/workflows/diagnose-v075-registration-db.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fleetbase-v075-registration-db-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AIVEN_MYSQL_HOST: ${{ secrets.AIVEN_MYSQL_HOST }}
+      AIVEN_MYSQL_PORT: ${{ secrets.AIVEN_MYSQL_PORT }}
+      AIVEN_MYSQL_USER: ${{ secrets.AIVEN_MYSQL_USER }}
+      AIVEN_MYSQL_PASSWORD: ${{ secrets.AIVEN_MYSQL_PASSWORD }}
+      AIVEN_MYSQL_CA_PEM: ${{ secrets.AIVEN_MYSQL_CA_PEM }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install --disable-pip-version-check pymysql==1.1.1
+      - name: Run read-only staging database inspection
+        run: python ops/diagnose_staging_registration.py
