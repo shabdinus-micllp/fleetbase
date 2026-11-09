@@ -1,0 +1,3 @@
+# Isolated Fleetbase v0.7.75 diagnostic overlay; never used by Render staging directly.
+FROM ghcr.io/shabdinus-micllp/fleetbase-api-clean@sha256:53b950f61b4872f31a16bbd5b8c0519a234cd959fd4f0ada448c13c0df25564a
+COPY api/app/Providers/AppServiceProvider.php /fleetbase/api/app/Providers/AppServiceProvider.php
