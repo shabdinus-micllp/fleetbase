@@ -5,6 +5,23 @@ $host = getenv('REDIS_HOST') ?: 'red-dbno55ec6qcc73edudv0';
 $port = filter_var(getenv('REDIS_PORT') ?: '6379', FILTER_VALIDATE_INT) ?: 6379;
 $start = microtime(true);
 echo "[redis-diagnostic] starting\n";
+
+// Public, unauthenticated API smoke tests. Only log status and bounded response.
+foreach (['/' => 'api-root', '/int/v1/onboard/should-onboard' => 'onboarding'] as $path => $label) {
+    $url = 'https://fleetbase-api-v075-stage.onrender.com' . $path;
+    $context = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 15, 'ignore_errors' => true, 'header' => "Accept: application/json\\r\\n"]]);
+    $body = @file_get_contents($url, false, $context);
+    $headers = $http_response_header ?? [];
+    $status = preg_match('/HTTP\\/\\S+\\s+(\\d+)/', $headers[0] ?? '', $matches) ? $matches[1] : 'no-response';
+    echo "[api-smoke] {$label}: HTTP {$status}\\n";
+    if ($label === 'onboarding' && $body !== false) {
+        $json = json_decode($body, true);
+        if (is_array($json) && array_key_exists('should_onboard', $json)) {
+            echo "[api-smoke] should_onboard: " . ($json['should_onboard'] ? 'true' : 'false') . "\\n";
+        }
+    }
+}
+
 $resolved = gethostbyname($host);
 echo "[redis-diagnostic] system resolver: " . ($resolved === $host ? "unresolved" : "resolved") . "\n";
 if (filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
