@@ -50,22 +50,6 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Detect the moment Laravel's transaction counter stops agreeing with the MySQL session.
-     *
-     * Laravel decides whether to issue a COMMIT from its own integer counter
-     * (ManagesTransactions::commit(), and the inline twin inside transaction()),
-     * while PDO decides whether a COMMIT is legal from the server's
-     * SERVER_STATUS_IN_TRANS flag. If anything ends the server-side transaction
-     * without going through the Connection - an implicit commit from DDL, or a
-     * second PDO handle aliasing the same persistent MySQL session - the counter
-     * keeps saying "1". Every statement issued since BEGIN is then already
-     * durable, and the eventual commit throws "There is no active transaction",
-     * so the caller reports failure for a write that landed.
-     *
-     * This logs the divergence at the statement that caused it, which is the
-     * only place the culprit is still identifiable.
-     */
-    /**
      * Opt-in timing for the staging onboarding endpoint.
      *
      * Records completed database operations without SQL, bindings, request
@@ -92,7 +76,7 @@ class AppServiceProvider extends ServiceProvider
             'path' => $request->path(),
         ]);
 
-        Event::listen(QueryExecuted::class, function (QueryExecuted $query) use (&$count, &$totalMs) {
+        Event::listen(QueryExecuted::class, function (QueryExecuted $query) use (&$count, &$totalMs, $started) {
             ++$count;
             $totalMs += $query->time;
 
@@ -100,7 +84,7 @@ class AppServiceProvider extends ServiceProvider
                 'sequence' => $count,
                 'connection' => $query->connectionName,
                 'duration_ms' => round($query->time, 2),
-                'elapsed_ms' => round((microtime(true) - LARAVEL_START) * 1000, 2),
+                'elapsed_ms' => round((microtime(true) - $started) * 1000, 2),
             ]);
         });
 
@@ -114,6 +98,22 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Detect the moment Laravel's transaction counter stops agreeing with the MySQL session.
+     *
+     * Laravel decides whether to issue a COMMIT from its own integer counter
+     * (ManagesTransactions::commit(), and the inline twin inside transaction()),
+     * while PDO decides whether a COMMIT is legal from the server's
+     * SERVER_STATUS_IN_TRANS flag. If anything ends the server-side transaction
+     * without going through the Connection - an implicit commit from DDL, or a
+     * second PDO handle aliasing the same persistent MySQL session - the counter
+     * keeps saying "1". Every statement issued since BEGIN is then already
+     * durable, and the eventual commit throws "There is no active transaction",
+     * so the caller reports failure for a write that landed.
+     *
+     * This logs the divergence at the statement that caused it, which is the
+     * only place the culprit is still identifiable.
+     */
     protected function configureTransactionTripwire(): void
     {
         if (!env('DB_TXN_TRIPWIRE_ENABLED', false)) {
