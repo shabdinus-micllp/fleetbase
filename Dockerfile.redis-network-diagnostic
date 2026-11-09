@@ -1,6 +1,7 @@
 FROM php:8.2-cli-alpine
 WORKDIR /opt/diagnostic
 COPY tools/redis-connectivity.php /opt/diagnostic/redis-connectivity.php
+COPY tools/console-static-probe.php /opt/diagnostic/console-static-probe.php
 RUN mkdir -p /opt/diagnostic/public && printf 'diagnostic service active\n' > /opt/diagnostic/public/index.html
 EXPOSE 10000
-CMD ["sh", "-c", "php /opt/diagnostic/redis-connectivity.php; exec php -S 0.0.0.0:${PORT:-10000} -t /opt/diagnostic/public"]
+CMD ["sh", "-c", "php /opt/diagnostic/console-static-probe.php; exec php -S 0.0.0.0:${PORT:-10000} -t /opt/diagnostic/public"]
