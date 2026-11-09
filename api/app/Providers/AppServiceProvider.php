@@ -67,6 +67,39 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
+        // Request-scoped checkpoints; no request payloads, identifiers, or SQL bindings.
+        $phase = 'request-start';
+        $mark = function (string $name) use (&$phase): void {
+            $phase = $name;
+            Log::info('[registration:phase]', ['phase' => $name]);
+        };
+
+        // These callbacks run after the model's trait boot listeners, so they
+        // distinguish successful pre-insert hooks from the insert/created hooks.
+        \Fleetbase\Models\Company::created(function () use ($mark) {
+            $mark('company-created');
+        });
+        \Fleetbase\Models\User::saving(function () use ($mark) {
+            $mark('user-saving-hooks-completed');
+        });
+        \Fleetbase\Models\User::creating(function () use ($mark) {
+            $mark('user-creating-hooks-completed');
+        });
+        \Fleetbase\Models\User::created(function () use ($mark) {
+            $mark('user-insert-completed');
+        });
+
+        register_shutdown_function(function () use (&$phase) {
+            $error = error_get_last();
+            if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+                Log::error('[registration:shutdown]', [
+                    'last_phase' => $phase,
+                    'fatal_type' => $error['type'],
+                    'fatal_is_timeout' => str_contains($error['message'] ?? '', 'Maximum execution time'),
+                ]);
+            }
+        });
+
         $started = microtime(true);
         $count = 0;
         $totalMs = 0.0;
